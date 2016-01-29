@@ -1,4 +1,5 @@
-
+,
+library(Standard)
 
 pc_lsoa <- read.csv("UK Police data/POSTCODE_TO_LSOA.csv")
 weather <- read.csv("UK Police data/weather_Heathrow_2015.csv")
@@ -67,7 +68,55 @@ for(filename in all_files){
     
     l <- PushList(l, tmp_df)
 }
+save(list = "l", file = "data/l.RData")
 
-foo <- merge(t(l[[1]]), t(l[[2]]), all = TRUE)
+#foo <- merge(t(l[[1]]), t(l[[2]]), all = TRUE)
 
+l_df <- list()
+
+for(i in seq_along(l)){
+    
+    print(i)
+    tmp_df <- l[[i]]
+    
+    # change the structures of the data frames
+    tmp_df <- data.frame(t(tmp_df), stringsAsFactors = F)
+    varnames <- as.character(tmp_df[1,])
+    tmp_df <- tmp_df[2,]
+    colnames(tmp_df) <- varnames
+    
+    # remove duplicated columns
+    dup <- duplicated(colnames(tmp_df))
+    tmp_df <- tmp_df[, !dup]
+    
+    # include the additional columns, and fill with NAs if required
+    AddCols <- function(df){
+        
+        for(ii in seq_along(all_vars)){
+            
+            one_col <- all_vars[ii]
+            
+            #print(one_col);
+            #print(ii)
+            
+            if((one_col %in% colnames(df)) == FALSE){
+                
+                df <- cbind(df, NA)
+                colnames(df)[ncol(df)] <- one_col
+            }
+            #print(dim(df))
+            
+        }
+        return(df)   
+    }
+    
+    # fill the columns
+    tmp_df <- AddCols(tmp_df)
+    
+    l_df <- PushList(l_df, tmp_df)
+    
+}
+
+all_sch <- do.call(rbind.data.frame, l_df)
+save(list = "all_sch", file = "data/all_sch.RData")
 
