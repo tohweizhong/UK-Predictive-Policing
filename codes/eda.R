@@ -1,4 +1,4 @@
-,
+
 library(Standard)
 
 pc_lsoa <- read.csv("UK Police data/POSTCODE_TO_LSOA.csv")
@@ -116,6 +116,10 @@ for(i in seq_along(l)){
     l_df <- PushList(l_df, tmp_df)
     
 }
+
+lapply(l_df, ncol) %>% unlist %>% table
+which((lapply(l_df, ncol)) == 1121)
+
 
 all_sch <- do.call(rbind.data.frame, l_df)
 save(list = "all_sch", file = "data/all_sch.RData")
