@@ -133,5 +133,3 @@ save(list = "l", file = "data/l.RData")
 #save(list = "all_sch", file = "data/all_sch.RData")
 
 # ====
-
-
