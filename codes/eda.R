@@ -1,4 +1,4 @@
-,
+
 library(Standard)
 
 pc_lsoa <- read.csv("UK Police data/POSTCODE_TO_LSOA.csv")
@@ -47,6 +47,7 @@ for(filename in all_files){
     all_vars <- union(all_vars, unique(tmp_df$VARIABLE))  
     
 }
+all_vars[1091] <- ""
 
 save(list = c("all_vars", "common_vars"), file = "data/vars.RData")
 
@@ -72,51 +73,65 @@ save(list = "l", file = "data/l.RData")
 
 #foo <- merge(t(l[[1]]), t(l[[2]]), all = TRUE)
 
-l_df <- list()
+# l_df_1120 <- list()
+# l_df_1121 <- list()
+# 
+# for(i in seq_along(l)){
+#     
+#     print(i)
+#     tmp_df <- l[[i]]
+#     
+#     # change the structures of the data frames
+#     tmp_df <- data.frame(t(tmp_df), stringsAsFactors = F)
+#     varnames <- as.character(tmp_df[1,])
+#     tmp_df <- tmp_df[2,]
+#     colnames(tmp_df) <- varnames
+#     
+#     # remove duplicated columns
+#     dup <- duplicated(colnames(tmp_df))
+#     tmp_df <- tmp_df[, !dup]
+#     
+#     # include the additional columns, and fill with NAs if required
+#     AddCols <- function(df){
+#         
+#         for(ii in seq_along(all_vars)){
+#             
+#             one_col <- all_vars[ii]
+#             
+#             #print(one_col);
+#             #print(ii)
+#             
+#             if((one_col %in% colnames(df)) == FALSE){
+#                 
+#                 df <- cbind(df, NA)
+#                 colnames(df)[ncol(df)] <- one_col
+#             }
+#             #print(dim(df))
+#             
+#         }
+#         return(df)   
+#     }
+#     
+#     # fill the columns
+#     tmp_df <- AddCols(tmp_df)
+#     
+#     if(ncol(tmp_df) == 1121){
+#         l_df_1121 <- PushList(l_df_1121, tmp_df)
+#     }
+#     else if(ncol(tmp_df) == 1120){
+#         l_df_1120 <- PushList(l_df_1120, tmp_df)
+#     }
+# }
+# 
+# save(list = "l_df_1120", file = "data/l_df_1120.RData")
+# save(list = "l_df_1121", file = "data/l_df_1121.RData")
+# 
+# all_sch_1120 <- do.call(rbind.data.frame, l_df_1120)
+# all_sch_1121 <- do.call(rbind.data.frame, l_df_1121)
+#mismatching colnames
 
-for(i in seq_along(l)){
-    
-    print(i)
-    tmp_df <- l[[i]]
-    
-    # change the structures of the data frames
-    tmp_df <- data.frame(t(tmp_df), stringsAsFactors = F)
-    varnames <- as.character(tmp_df[1,])
-    tmp_df <- tmp_df[2,]
-    colnames(tmp_df) <- varnames
-    
-    # remove duplicated columns
-    dup <- duplicated(colnames(tmp_df))
-    tmp_df <- tmp_df[, !dup]
-    
-    # include the additional columns, and fill with NAs if required
-    AddCols <- function(df){
-        
-        for(ii in seq_along(all_vars)){
-            
-            one_col <- all_vars[ii]
-            
-            #print(one_col);
-            #print(ii)
-            
-            if((one_col %in% colnames(df)) == FALSE){
-                
-                df <- cbind(df, NA)
-                colnames(df)[ncol(df)] <- one_col
-            }
-            #print(dim(df))
-            
-        }
-        return(df)   
-    }
-    
-    # fill the columns
-    tmp_df <- AddCols(tmp_df)
-    
-    l_df <- PushList(l_df, tmp_df)
-    
-}
+#save(list = "all_sch", file = "data/all_sch.RData")
 
-all_sch <- do.call(rbind.data.frame, l_df)
-save(list = "all_sch", file = "data/all_sch.RData")
+# ====
+
 
