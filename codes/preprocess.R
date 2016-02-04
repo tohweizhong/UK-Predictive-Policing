@@ -2,34 +2,34 @@
 # preprocess.R
 
 # required columns
-req_vars <- c("URN"
+req_vars <- c("URN" # Unique Reference Number
               ,"POSTCODE"
-              ,"ICLOSE"
-              ,"ISNEW"
-              ,"MINORGROUP"
-              ,"NFTYPE"
+              ,"ICLOSE" # Is school closed?
+              ,"ISNEW" # Is school new
+              ,"MINORGROUP" # Type of school/college
+              ,"NFTYPE" # School type
               ,"ISPRIMARY"
               ,"ISSECONDARY"
-              ,"ISPOST16"
-              ,"AGEL"
-              ,"AGEH"
-              ,"GENDER"
-              ,"SFGENDER"
-              ,"TOTPUPS"
-              ,"TPUPYEAR"
-              ,"TELIG"
-              ,"TKS1APS"
-              ,"TKS1EXP_L"
-              ,"PTNOTFSM6CLA1A"
-              ,"PTREADWRITTAMATAX"
-              ,"TAPS"
-              ,"OVAMEAS"
-              ,"TEACHINGSTAFF"
-              ,"PREMISES"
-              ,"LEARNINGRESOURCES"
-              ,"ICT"
-              ,"BOUGHTINPROFESSIONALSERVICES"
-              ,"TOTALEXPENDITURE")
+              ,"ISPOST16" # 16-18?
+              ,"AGEL" # Lowest age of entry
+              ,"AGEH" # Highest age of entry
+              ,"GENDER" # Gender at entry
+              ,"SFGENDER" # Gender of entry to sixth form
+              ,"TOTPUPS" # Total number of pupils (including part-time pupils)
+              ,"TPUPYEAR" # Number of pupils aged 11 
+              ,"TELIG" # Published eligible pupil number
+              ,"TKS1APS" # Cohort level key stage 1 average points score
+              ,"TKS1EXP_L" # Number of pupils in cohort with low KS1 attainment
+              ,"PTNOTFSM6CLA1A" # % key stage 2 pupils who are not disadvantaged
+              ,"PTREADWRITTAMATAX" # % pupils achieving level 5 or above in reading and maths test and writing TA
+              ,"TAPS" # Average point score
+              ,"OVAMEAS" # Overall value added measure
+              ,"TEACHINGSTAFF" # Teaching staff (£ per pupil)
+              ,"PREMISES" # Premises (incl. Staff costs) (£ per pupil)
+              ,"LEARNINGRESOURCES" # Learning resources (not ICT equipment) (£ per pupil)
+              ,"ICT" # ICT learning resources (£ per pupil)
+              ,"BOUGHTINPROFESSIONALSERVICES" # Bought in professional services - curriculum (£ per pupil)
+              ,"TOTALEXPENDITURE") # Total expenditure (£ per pupil)
 
 # function to select the required columns from one dataframe in l_df
 # impute with NA when necessary
@@ -66,5 +66,5 @@ all_sch <- all_sch[,-1]
 all_sch <- all_sch[!duplicated(all_sch),]
 
 # write to file
-write.csv(all_sch, file = "data/all_sch.csv")
+write.csv(all_sch, file = "data/all_sch.csv", row.names = FALSE)
 
