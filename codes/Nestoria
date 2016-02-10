@@ -1,0 +1,234 @@
+library(lubridate)
+library(jsonlite)
+library(dplyr)
+
+#Sys.setenv(http_proxy="https://proxy.ncs.com.sg:8080")
+
+rawData = read.csv("aggregated.csv", stringsAsFactors = FALSE)
+output = read.csv("master housing price.csv", stringsAsFactors = FALSE)
+#centroids = read.csv("LSOA_2011_CENTROIDS.csv", stringsAsFactors = FALSE, row.names = NULL)
+#LSOAarea = read.csv("LSOA11_LAD11_EW_SAM.csv", stringsAsFactors = FALSE, row.names = NULL)
+#fullLatLong = read.csv("Unique_Latlongs.csv", stringsAsFactors = FALSE)
+
+###merge centroid data with LSOA area data
+#LSOAarea = subset(LSOAarea, select = c("LSOA11CD", "AREAEHECT"))
+#centroids = merge(x = centroids, y = LSOAarea, by = intersect("LSOA11CD","LSOA11CD"))
+
+#remove whitespace from long/lat data
+rawData$Longitude = gsub(" ", "", as.character(rawData$Longitude))
+rawData$Latitude= gsub(" ", "", as.character(rawData$Latitude))
+
+#format data frame
+rawData$Month = paste(rawData$Month, "01", sep = "-")
+rawData$Date = as.Date(rawData$Month, format = "%Y-%m-%d") # convert to character
+rawData$Month = as.character(month(rawData$Month, label = TRUE, abbr = TRUE))
+
+columnNames = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+rawData$latlong = NULL
+rawData$latlong = paste(rawData$Latitude, rawData$Longitude, sep = ",")
+rawData_unique = rawData %>% distinct(latlong)
+
+#scrape unique latlongs
+cnt <- 0
+errorCount <- 0
+output5 = apply(fullLatLong, MARGIN = 1, FUN = executeQuery)
+output6 = output5
+
+##compress list
+data = processList(output5)
+
+#get latlongs with NA price data
+missing = data[which(data %in% "NA")]
+complete = data[-which(data %in% "NA")]
+latlong = names(missing)
+lat = unlist(strsplit(latlong, ","))[seq(1,length(unlist(strsplit(latlong, ","))),2)]
+long = unlist(strsplit(latlong, ","))[seq(2,length(unlist(strsplit(latlong, ","))),2)]
+lat = gsub(" ", "", lat)
+long = gsub(" ", "", long)
+missing = cbind(long,lat,latlong)
+
+##scrape incremental/missing latlongs
+cnt <- 0
+errorCount <- 0
+newOutput = apply(missing, MARGIN = 1, FUN = executeQuery)
+newOutput1 = processList(newOutput)
+#append new list of housing prices
+data = c(complete, newOutput1)
+
+##store scraped data
+output = NULL
+convertCount = 0
+desc = data.frame(rownames(data[[1]]), stringsAsFactors = FALSE) #default row names
+
+for(i in 1:length(data)){
+  df = listToDF(data[i])
+  output = rbind(df, output)
+}
+
+write.csv(output, file = "output1.csv", row.names = FALSE)
+
+###match values to crime data
+cnt = 1
+errorcount = 0
+## default headers
+priceType_headers = c("avg_1bed_property_rent_monthly", "avg_1bed_property_buy_monthly",
+                      "avg_2bed_property_rent_monthly", "avg_2bed_property_buy_monthly",
+                      "avg_3bed_property_rent_monthly", "avg_3bed_property_buy_monthly",
+                      "avg_4bed_property_rent_monthly", "avg_4bed_property_buy_monthly",
+                      "avg_5bed_property_rent_monthly", "avg_5bed_property_buy_monthly",
+                      "avg_property_rent_monthly", "avg_property_buy_monthly") 
+
+##initialize all values to 0
+rawData[,11:22] = rep(rep(as.character(0), times = nrow(rawData)), times = 12)
+colnames(rawData)[11:22] = priceType_headers
+
+priceDF = do.call(rbind,apply(rawData, MARGIN = 1, FUN = matchCode))
+
+write.csv(priceDF, file = "Updated aggregated1.csv", row.names = FALSE)
+
+#####################
+######FUNCTIONS######
+#####################
+
+### match housing prices and crime data based on latlong
+## return matching list, convert to dataframe
+# merge based on lat, long and month
+########################################################
+
+### Extract housing price data for relevant latlong codes
+## references data list for list of prices
+#input: character vector (coerced into character vector by apply function)
+#output: character vector
+matchCode = function(vec){
+  
+  vec = data.frame(t(vec), stringsAsFactors = FALSE)
+  #rawColNames = colnames(vec)
+  
+  month = rawData$Month[cnt]
+  latlongRef = as.character(vec[,10])
+  
+  # find correct list of housing price based on latlong
+  price = output %>% 
+    filter(latlong == latlongRef) %>%
+    select(matches(month))
+
+  priceType = output %>% 
+    filter(latlong == latlongRef) %>%
+    select(matches("desc"))
+  
+  rownames(price) = as.matrix(priceType)
+  price = data.frame(t(price), stringsAsFactors = FALSE)
+                  
+  ##merge prices based on price types
+  vec_back = merge(x = vec[1,11:22], y = price, all.y = TRUE)
+  vec_front = vec[1,1:10]
+  
+  vec = cbind(vec_front, vec_back)
+
+  vec[1,11:22] = as.character(vec[1,11:22])
+  print(paste("Completed matching entry",cnt,sep=" "))
+  cnt <<- cnt + 1
+  return(vec)
+}
+
+### format API queries
+executeQuery = function(x){
+  df = tryCatch(
+    {
+      #print("start")
+      #LSOAcode = x[1]
+      #LSOAname = x[2]
+      long = x[1]
+      lat = x[2]
+      ID = x[3]
+      #area = x[7]
+      #radius = 2
+      #radius = sqrt(area/100/3.14)
+      #print("finished reading df values")
+      link = paste("http://api.nestoria.co.uk/api?action=metadata&country=uk&encoding=json&listing_type=buy&centre_point=",lat,",",long, sep ="")
+      #print(link)
+      jsonOutput = fromJSON(link)
+      #print("obtained JSON output")
+      names = jsonOutput[[2]]$metadata$metadata_name
+      
+      Jan = jsonOutput[[2]]$metadata$data[[1]][,-c(2,3)]
+      Feb = jsonOutput[[2]]$metadata$data[[5]][,-c(2,3)]
+      Mar = jsonOutput[[2]]$metadata$data[[6]][,-c(2,3)]
+      Apr = jsonOutput[[2]]$metadata$data[[7]][,-c(2,3)]
+      May = jsonOutput[[2]]$metadata$data[[8]][,-c(2,3)]
+      Jun = jsonOutput[[2]]$metadata$data[[9]][,-c(2,3)]
+      Jul = jsonOutput[[2]]$metadata$data[[10]][,-c(2,3)]
+      Aug = jsonOutput[[2]]$metadata$data[[11]][,-c(2,3)]
+      Sep = jsonOutput[[2]]$metadata$data[[12]][,-c(2,3)]
+      Oct = jsonOutput[[2]]$metadata$data[[2]][,-c(2,3)]
+      Nov = jsonOutput[[2]]$metadata$data[[3]][,-c(2,3)]
+      Dec = jsonOutput[[2]]$metadata$data[[4]][,-c(2,3)]
+      
+      combined = data.frame(Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec,
+                            stringsAsFactors = FALSE)
+      #print("combined dataframe")
+      columnNames = colnames(combined)
+      rownames(combined) = names
+      combined = list(ID, combined) #store output as list
+      #print("list of data + LSOA code")
+      cnt <<- cnt + 1
+      print(paste("Finished scrapping", cnt, "entries", sep = " "))
+      #Sys.sleep(1)
+      return(combined)
+    },
+    error = function(cond){
+      error = list(ID, rep("NA", times = 1))
+      errorCount <<- errorCount + 1
+      print(paste("Error #", errorCount, sep = " "))
+      geterrmessage()
+      #Sys.sleep(1)
+      return(error)
+    }
+  )
+}
+
+### processes output, returns named list of property prices based on LSOA codes
+processList = function(list){
+  temp = unlist(list, recursive = FALSE)
+  codes = temp[seq(1,length(temp),2)]
+  data = temp[seq(2,length(temp),2)]
+  
+  #name each list after corresponding LSOA code
+  names(data) = unlist(codes)
+  
+  return(data)
+}
+
+##identify LSOA codes for re-scrapping
+missingLSOA = function(data){
+  remedy = unlist(sapply(data, FUN = function(x){ncol(x) == 0 | ncol(x) == 1}))
+  LSOAcodesRemedy = names(data)[remedy]
+  data <<- data[!remedy]
+  LSOAcodesRemedy = subset(centroids, LSOA11CD %in% LSOAcodesRemedy)
+  
+  return(LSOAcodesRemedy)
+}
+
+##converts list to df for storage
+#input: list of prices for each latlong
+#output: df of values
+listToDF = function(df){
+  #check if data has "NA"
+  if(length(df[[1]]) == 1){
+    latlong = data.frame(rep(names(df), times = 12), stringsAsFactors = FALSE)
+    df[[1]] = t(data.frame(rep("NA", times = 12)))
+    colnames(df[[1]]) = columnNames
+    out = cbind(latlong, desc, df[[1]]) #use default 12 rows
+  }else{ #for all other price df with data
+    latlong = data.frame(rep(names(df), times = nrow(df[[1]])), stringsAsFactors = FALSE)
+    desc_default = rownames(df[[1]])
+    out = cbind(latlong, desc_default, df[[1]])
+  }
+  colnames(out)[1:2] = c("latlong", " desc")
+  rownames(out) = NULL
+  convertCount <<- convertCount + 1
+  print(paste("Completed converting", convertCount,"rows", sep = " "))
+  return(out)
+}
+
+### LSOA area data = https://geoportal.statistics.gov.uk/geoportal/catalog/content/filelist.page?redirect=Docs/Products/Standard_area_measurement_(SAM)_for_2011_lower_layer_super_output_areas.zip&pos=8&cat=#OP_Standard_area_measurement_(SAM)_for_2011_lower_layer_super_output_areas.zip
